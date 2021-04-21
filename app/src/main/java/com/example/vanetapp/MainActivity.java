@@ -10,19 +10,28 @@ import android.widget.Button;
 import com.google.firebase.auth.FirebaseAuth;
 
 public class MainActivity extends AppCompatActivity {
-    private Button button;
+    private Button profile_button;
+    private Button maps_button;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        button  = findViewById(R.id.profileBtn);
-        button.setOnClickListener(view -> openProfileActivity());
+        profile_button  = findViewById(R.id.profileBtn);
+        profile_button.setOnClickListener(view -> openProfileActivity());
+
+        maps_button  = findViewById(R.id.mapsGpsBtn);
+        maps_button.setOnClickListener(view -> openMapsActivity());
     }
 
     private void openProfileActivity() {
         Intent intent = new Intent(this, ProfileActivity.class);
+        startActivity(intent);
+    }
+
+    private void openMapsActivity() {
+        Intent intent = new Intent(this, MapsActivity.class);
         startActivity(intent);
     }
 
