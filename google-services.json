@@ -1,0 +1,40 @@
+{
+  "project_info": {
+    "project_number": "358533681749",
+    "firebase_url": "https://vanetapp-b2079.firebaseio.com",
+    "project_id": "vanetapp-b2079",
+    "storage_bucket": "vanetapp-b2079.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:358533681749:android:bbe7aec3490a906dc1fadc",
+        "android_client_info": {
+          "package_name": "com.example.vanetapp"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "358533681749-un9s2o08ihsck48hvgb1pg7963k3fqp1.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC0oixfUAfsBKuDWjvdMZOGVLsS3GwA7Fo"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "358533681749-un9s2o08ihsck48hvgb1pg7963k3fqp1.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
