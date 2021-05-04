@@ -85,10 +85,12 @@ public class Register extends AppCompatActivity {
 
                     userId = firebaseAuth.getCurrentUser().getUid();
                     DocumentReference documentReference = firebaseFirestore.collection("users").document(userId);
-                    Map<String, Object> user = new HashMap<>();
-                    user.put("username", username);
-                    user.put("email", email);
-                    user.put("phone", phone);
+
+                    User user = new User();
+                    user.setEmail(email);
+                    user.setUsername(username);
+                    user.setPhone(phone);
+                    user.setUser_id(FirebaseAuth.getInstance().getUid());
 
                     documentReference.set(user).addOnSuccessListener(aVoid ->
                             Log.d("TAG", "onSuccess: user profile is created for " + userId)

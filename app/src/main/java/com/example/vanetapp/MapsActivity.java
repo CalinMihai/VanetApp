@@ -2,6 +2,7 @@ package com.example.vanetapp;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AlertDialog;
+import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 import androidx.fragment.app.FragmentActivity;
@@ -32,6 +33,10 @@ import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.MarkerOptions;
 import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.Task;
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.firestore.DocumentReference;
+import com.google.firebase.firestore.DocumentSnapshot;
+import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.GeoPoint;
 
 import static com.example.vanetapp.Constants.ERROR_DIALOG_REQUEST;
@@ -39,27 +44,29 @@ import static com.example.vanetapp.Constants.MAPVIEW_BUNDLE_KEY;
 import static com.example.vanetapp.Constants.PERMISSIONS_REQUEST_ACCESS_FINE_LOCATION;
 import static com.example.vanetapp.Constants.PERMISSIONS_REQUEST_ENABLE_GPS;
 
-public class MapsActivity extends FragmentActivity implements OnMapReadyCallback {
+public class MapsActivity extends AppCompatActivity implements OnMapReadyCallback {
 
     private MapView mMapView;
     private boolean mLocationPermissionGranted = false;
     private static final String TAG = "MapsActivity";
     private FusedLocationProviderClient mFusedLocationClient;
+    private UserLocation mUserLocation;
+    private FirebaseFirestore firebaseFirestore;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_maps);
+
         mMapView = (MapView) findViewById(R.id.map);
         mFusedLocationClient = LocationServices.getFusedLocationProviderClient(this);
+        firebaseFirestore = FirebaseFirestore.getInstance();
+
         initGoogleMap(savedInstanceState);
 
     }
 
     private void initGoogleMap(Bundle savedInstanceState){
-        // *** IMPORTANT ***
-        // MapView requires that the Bundle you pass contain _ONLY_ MapView SDK
-        // objects or sub-Bundles.
         Bundle mapViewBundle = null;
         if (savedInstanceState != null) {
             mapViewBundle = savedInstanceState.getBundle(MAPVIEW_BUNDLE_KEY);
@@ -68,9 +75,48 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         mMapView.getMapAsync(this);
     }
 
+    private void getUserDetails(){
+        if(mUserLocation == null){
+            mUserLocation = new UserLocation();
+
+            DocumentReference userRef = firebaseFirestore
+                    .collection("users")
+                    .document(FirebaseAuth.getInstance().getUid());
+            userRef.get().addOnCompleteListener(new OnCompleteListener<DocumentSnapshot>() {
+                @Override
+                public void onComplete(@NonNull Task<DocumentSnapshot> task) {
+                    if(task.isSuccessful()){
+                        Log.d(TAG, "onComplete: successfully get the user details.");
+
+                        User user = task.getResult().toObject(User.class);
+                        mUserLocation.setUser(user);
+                        getLastKnownLocation();
+                    }
+                }
+            });
+        }
+    }
+
+    private void saveUserLocation(){
+        if(mUserLocation != null){
+            DocumentReference locationRef = firebaseFirestore
+                    .collection("User locations")
+                    .document(FirebaseAuth.getInstance().getUid());
+            locationRef.set(mUserLocation).addOnCompleteListener(new OnCompleteListener<Void>() {
+                @Override
+                public void onComplete(@NonNull Task<Void> task) {
+                    if(task.isSuccessful()){
+                        Log.d(TAG, "saveUserLocation: \ninserted user location into database." +
+                                "\n latitude: " + mUserLocation.getGeo_point().getLatitude() +
+                                "\n longitude: " + mUserLocation.getGeo_point().getLongitude());
+                    }
+                }
+            });
+        }
+    }
+
     private void getLastKnownLocation() {
         Log.d(TAG, "getLastKnownLocation: called.");
-
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
             return;
         }
@@ -82,6 +128,10 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                     GeoPoint geoPoint = new GeoPoint(location.getLatitude(), location.getLongitude());
                     Log.d(TAG, "onComplete: latitude " + geoPoint.getLatitude());
                     Log.d(TAG, "onComplete: longitude " + geoPoint.getLongitude());
+
+                    mUserLocation.setGeo_point(geoPoint);
+                    mUserLocation.setTimestamp(null);
+                    saveUserLocation();
                 }
             }
         });
@@ -131,7 +181,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                 == PackageManager.PERMISSION_GRANTED) {
             mLocationPermissionGranted = true;
             //do what you intend with the app if the permission is granted
-            getLastKnownLocation();
+            getUserDetails();
         } else {
             ActivityCompat.requestPermissions(this,
                     new String[]{android.Manifest.permission.ACCESS_FINE_LOCATION},
@@ -183,7 +233,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             case PERMISSIONS_REQUEST_ENABLE_GPS: {
                 if (mLocationPermissionGranted) {
                     //do what you intend with the app if the permission is granted
-                    getLastKnownLocation();
+                    getUserDetails();
                 } else {
                     getLocationPermission();
                 }
@@ -231,7 +281,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         if (checkMapServices()) {
             if (mLocationPermissionGranted) {
                 //do what you intend with the app if the permission is granted
-                getLastKnownLocation();
+                getUserDetails();
             } else {
                 getLocationPermission();
             }
