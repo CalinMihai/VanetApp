@@ -82,6 +82,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
             DocumentReference userRef = firebaseFirestore
                     .collection("users")
                     .document(FirebaseAuth.getInstance().getUid());
+
             userRef.get().addOnCompleteListener(new OnCompleteListener<DocumentSnapshot>() {
                 @Override
                 public void onComplete(@NonNull Task<DocumentSnapshot> task) {
@@ -90,10 +91,16 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
 
                         User user = task.getResult().toObject(User.class);
                         mUserLocation.setUser(user);
+                        //setting the User singleton
+                        ((UserClient)getApplicationContext()).setUser(user);
+
                         getLastKnownLocation();
                     }
                 }
             });
+        }
+        else{
+            getLastKnownLocation();
         }
     }
 
