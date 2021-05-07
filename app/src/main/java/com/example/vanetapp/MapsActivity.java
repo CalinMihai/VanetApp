@@ -30,6 +30,7 @@ import com.google.android.gms.maps.MapView;
 import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.SupportMapFragment;
 import com.google.android.gms.maps.model.LatLng;
+import com.google.android.gms.maps.model.LatLngBounds;
 import com.google.android.gms.maps.model.MarkerOptions;
 import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.Task;
@@ -38,6 +39,8 @@ import com.google.firebase.firestore.DocumentReference;
 import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.GeoPoint;
+
+import java.util.ArrayList;
 
 import static com.example.vanetapp.Constants.ERROR_DIALOG_REQUEST;
 import static com.example.vanetapp.Constants.MAPVIEW_BUNDLE_KEY;
@@ -52,6 +55,9 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
     private FusedLocationProviderClient mFusedLocationClient;
     private UserLocation mUserLocation;
     private FirebaseFirestore firebaseFirestore;
+    private GoogleMap mMap;
+    private LatLngBounds mMapBoundary;
+    private UserLocation mUserPosition;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -61,7 +67,6 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
         mMapView = (MapView) findViewById(R.id.map);
         mFusedLocationClient = LocationServices.getFusedLocationProviderClient(this);
         firebaseFirestore = FirebaseFirestore.getInstance();
-
         initGoogleMap(savedInstanceState);
 
     }
@@ -88,7 +93,6 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
                 public void onComplete(@NonNull Task<DocumentSnapshot> task) {
                     if(task.isSuccessful()){
                         Log.d(TAG, "onComplete: successfully get the user details.");
-
                         User user = task.getResult().toObject(User.class);
                         mUserLocation.setUser(user);
                         //setting the User singleton
@@ -139,10 +143,26 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
                     mUserLocation.setGeo_point(geoPoint);
                     mUserLocation.setTimestamp(null);
                     saveUserLocation();
+                    setCameraView();
                 }
             }
         });
 
+    }
+    //Overall map view window : 0.04 * 0.04 = 0.0016
+    private void setCameraView(){
+        //change mUserLocation to mUserPosition after getting other user locations
+        double bottomBoundary = mUserLocation.getGeo_point().getLatitude() - .04;
+        double topBoundary = mUserLocation.getGeo_point().getLatitude() + .04;
+        double leftBoundary = mUserLocation.getGeo_point().getLongitude() - .04;
+        double rightBoundary = mUserLocation.getGeo_point().getLongitude()  + .04;
+
+        mMapBoundary = new LatLngBounds(
+                new LatLng(bottomBoundary, leftBoundary),
+                new LatLng(topBoundary, rightBoundary)
+        );
+
+        mMap.moveCamera(CameraUpdateFactory.newLatLngBounds(mMapBoundary, 0));
     }
 
     //beginning of the permission checks
@@ -248,16 +268,21 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
         }
 
     }
-
     //end of the permission check
+
+    //verifying if the current user's location is the authenticated user' location
+    //to be implemented after retrieving other user locations
+/*    private void setUserPosition() {
+        for (UserLocation userLocation: mUserLocations){
+            if(userLocation.getUser().getUser_id().equals(FirebaseAuth.getInstance().getUid())){
+                mUserPosition = userLocation;
+            }
+        }
+    }*/
 
     @Override
     public void onMapReady(GoogleMap googleMap) {
-        GoogleMap mMap = googleMap;
-        // Add a marker in Sydney and move the camera
-        LatLng sydney = new LatLng(-34, 151);
-        mMap.addMarker(new MarkerOptions().position(sydney).title("Marker in Sydney"));
-        //mMap.moveCamera(CameraUpdateFactory.newLatLng(sydney));
+        mMap = googleMap;
         if (ActivityCompat.checkSelfPermission(this,
                 Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED
                 && ActivityCompat.checkSelfPermission(this,
@@ -265,6 +290,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
             return;
         }
         mMap.setMyLocationEnabled(true);
+
     }
 
     @Override
@@ -279,7 +305,6 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
 
         mMapView.onSaveInstanceState(mapViewBundle);
     }
-
 
     @Override
     public void onResume() {
