@@ -59,12 +59,14 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
     private GoogleMap mMap;
     private LatLngBounds mMapBoundary;
     private UserLocation mUserPosition;
+    public static TextView speedView;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_maps);
 
+        speedView = findViewById(R.id.speedView);
         mMapView = (MapView) findViewById(R.id.map);
         mFusedLocationClient = LocationServices.getFusedLocationProviderClient(this);
         firebaseFirestore = FirebaseFirestore.getInstance();

@@ -14,6 +14,7 @@ import android.os.Build;
 import android.os.IBinder;
 import android.os.Looper;
 import android.util.Log;
+import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -32,7 +33,15 @@ import com.google.firebase.firestore.DocumentReference;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.GeoPoint;
 
+import java.text.BreakIterator;
+
+import static com.example.vanetapp.MapsActivity.speedView;
+
 public class LocationService extends Service {
+
+    private int kmhSpeed;
+    private double dSpeed;
+    private double acceleration;
 
     private static final String TAG = "LocationService";
 
@@ -106,6 +115,12 @@ public class LocationService extends Service {
                             GeoPoint geoPoint = new GeoPoint(location.getLatitude(), location.getLongitude());
                             UserLocation userLocation = new UserLocation(user, geoPoint, null);
                             saveUserLocation(userLocation);
+                            if(location.hasSpeed()){
+                                dSpeed = location.getSpeed();
+                                acceleration = 3.6 * (dSpeed);
+                                kmhSpeed = (int) (Math.round(acceleration));
+                                speedView.setText("Km/h: " + kmhSpeed);
+                            }
                         }
                     }
                 },
