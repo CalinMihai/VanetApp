@@ -17,6 +17,7 @@ import android.content.pm.PackageManager;
 import android.location.Location;
 import android.location.LocationManager;
 import android.os.Bundle;
+import android.os.Handler;
 import android.util.Log;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -73,6 +74,10 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
     private ClusterManager<ClusterMarker> mClusterManager;
     private MyClusterManagerRenderer mClusterManagerRenderer;
     private ArrayList<ClusterMarker> mClusterMarkers = new ArrayList<>();
+
+    private Handler mHandler = new Handler();
+    private Runnable mRunnable;
+    private static final int LOCATION_UPDATE_INTERVAL = 3000;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -170,30 +175,92 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
         });
 
     }
-    private void startLocationService(){
-        if(!isLocationServiceRunning()){
-            Intent serviceIntent = new Intent(this, LocationService.class);
-//        this.startService(serviceIntent);
 
-            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O){
 
-                MapsActivity.this.startForegroundService(serviceIntent);
-            }else{
-                startService(serviceIntent);
-            }
-        }
+    private void getUsers() {
+        CollectionReference usersRef = firebaseFirestore
+                .collection("users");
+
+        mUserListEventListener = usersRef
+                .addSnapshotListener(new EventListener<QuerySnapshot>() {
+                    @Override
+                    public void onEvent(@javax.annotation.Nullable QuerySnapshot queryDocumentSnapshots, @javax.annotation.Nullable FirebaseFirestoreException e) {
+                        if (e != null) {
+                            Log.e(TAG, "onEvent: Listen failed.", e);
+                            return;
+                        }
+
+                        if (queryDocumentSnapshots != null) {
+
+                            // Clear the list and add all the users again
+                            mUserList.clear();
+                            mUserList = new ArrayList<>();
+
+                            for (QueryDocumentSnapshot doc : queryDocumentSnapshots) {
+                                User user = doc.toObject(User.class);
+                                mUserList.add(user);
+                                getUserLocation(user);
+                            }
+
+                            Log.d(TAG, "onEvent: user list size: " + mUserList.size());
+                        }
+                    }
+                });
     }
 
-    private boolean isLocationServiceRunning() {
-        ActivityManager manager = (ActivityManager) getSystemService(ACTIVITY_SERVICE);
-        for (ActivityManager.RunningServiceInfo service : manager.getRunningServices(Integer.MAX_VALUE)){
-            if("com.example.vanetapp.LocationService".equals(service.service.getClassName())) {
-                Log.d(TAG, "isLocationServiceRunning: location service is already running.");
-                return true;
+    private void getUserLocation(User user){
+        DocumentReference locationsRef = firebaseFirestore
+                .collection("User locations")
+                .document(user.getUser_id());
+
+        locationsRef.get().addOnCompleteListener(new OnCompleteListener<DocumentSnapshot>() {
+            @Override
+            public void onComplete(@NonNull Task<DocumentSnapshot> task) {
+
+                if(task.isSuccessful()){
+                    if(task.getResult().toObject(UserLocation.class) != null){
+
+                        mUserLocations.add(task.getResult().toObject(UserLocation.class));
+                        Log.d(TAG, "onComplete: Added user location to the list: "
+                                + mUserLocation.getUser().getUsername());
+                        setUserPosition();
+                    }
+                }
+            }
+        });
+
+
+    }
+    //verifying if the current user's location is the authenticated user' location
+    private void setUserPosition() {
+        for (UserLocation userLocation: mUserLocations){
+            if(userLocation.getUser().getUser_id().equals(FirebaseAuth.getInstance().getUid())){
+                mUserPosition = userLocation;
+                addMapMarkers();
             }
         }
-        Log.d(TAG, "isLocationServiceRunning: location service is not running.");
-        return false;
+
+    }
+
+    //Overall map view window : 0.04 * 0.04 = 0.0016
+    private void setCameraView(){
+
+        //setUserPosition();
+        //change mUserLocation to mUserPosition after getting other user locations
+        double bottomBoundary = mUserPosition.getGeo_point().getLatitude() - .04;
+        double topBoundary = mUserPosition.getGeo_point().getLatitude() + .04;
+        double leftBoundary = mUserPosition.getGeo_point().getLongitude() - .04;
+        double rightBoundary = mUserPosition.getGeo_point().getLongitude()  + .04;
+
+        mMapBoundary = new LatLngBounds(
+                new LatLng(bottomBoundary, leftBoundary),
+                new LatLng(topBoundary, rightBoundary)
+        );
+
+        mMap.moveCamera(CameraUpdateFactory.newLatLngBounds(mMapBoundary, 0));
+        startLocationService();
+        // starting the location updates
+        startUserLocationsRunnable();
     }
 
     //adding map markers
@@ -252,78 +319,92 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
         }
     }
 
-    //Overall map view window : 0.04 * 0.04 = 0.0016
-    private void setCameraView(){
-
-        //setUserPosition();
-        //change mUserLocation to mUserPosition after getting other user locations
-        double bottomBoundary = mUserPosition.getGeo_point().getLatitude() - .04;
-        double topBoundary = mUserPosition.getGeo_point().getLatitude() + .04;
-        double leftBoundary = mUserPosition.getGeo_point().getLongitude() - .04;
-        double rightBoundary = mUserPosition.getGeo_point().getLongitude()  + .04;
-
-        mMapBoundary = new LatLngBounds(
-                new LatLng(bottomBoundary, leftBoundary),
-                new LatLng(topBoundary, rightBoundary)
-        );
-
-        mMap.moveCamera(CameraUpdateFactory.newLatLngBounds(mMapBoundary, 0));
-        startLocationService();
+    private void startUserLocationsRunnable(){
+        Log.d(TAG, "startUserLocationsRunnable: starting runnable for retrieving updated locations.");
+        mHandler.postDelayed(mRunnable = new Runnable() {
+            @Override
+            public void run() {
+                retrieveUserLocations();
+                mHandler.postDelayed(mRunnable, LOCATION_UPDATE_INTERVAL);
+            }
+        }, LOCATION_UPDATE_INTERVAL);
     }
 
-    private void getUsers() {
-        CollectionReference usersRef = firebaseFirestore
-                .collection("users");
+    private void stopLocationUpdates(){
+        mHandler.removeCallbacks(mRunnable);
+    }
 
-        mUserListEventListener = usersRef
-                .addSnapshotListener(new EventListener<QuerySnapshot>() {
+    private void retrieveUserLocations(){
+        Log.d(TAG, "retrieveUserLocations: retrieving location of all users in the chatroom.");
+
+        try{
+            for(final ClusterMarker clusterMarker: mClusterMarkers){
+
+                DocumentReference userLocationRef = FirebaseFirestore.getInstance()
+                        .collection("User locations")
+                        .document(clusterMarker.getUser().getUser_id());
+
+                userLocationRef.get().addOnCompleteListener(new OnCompleteListener<DocumentSnapshot>() {
                     @Override
-                    public void onEvent(@javax.annotation.Nullable QuerySnapshot queryDocumentSnapshots, @javax.annotation.Nullable FirebaseFirestoreException e) {
-                        if (e != null) {
-                            Log.e(TAG, "onEvent: Listen failed.", e);
-                            return;
-                        }
+                    public void onComplete(@NonNull Task<DocumentSnapshot> task) {
+                        if(task.isSuccessful()){
 
-                        if (queryDocumentSnapshots != null) {
+                            final UserLocation updatedUserLocation = task.getResult().toObject(UserLocation.class);
 
-                            // Clear the list and add all the users again
-                            mUserList.clear();
-                            mUserList = new ArrayList<>();
+                            // update the location
+                            for (int i = 0; i < mClusterMarkers.size(); i++) {
+                                try {
+                                    if (mClusterMarkers.get(i).getUser().getUser_id().equals(updatedUserLocation.getUser().getUser_id())) {
 
-                            for (QueryDocumentSnapshot doc : queryDocumentSnapshots) {
-                                User user = doc.toObject(User.class);
-                                mUserList.add(user);
-                                getUserLocation(user);
+                                        LatLng updatedLatLng = new LatLng(
+                                                updatedUserLocation.getGeo_point().getLatitude(),
+                                                updatedUserLocation.getGeo_point().getLongitude()
+                                        );
+
+                                        mClusterMarkers.get(i).setPosition(updatedLatLng);
+                                        mClusterManagerRenderer.setUpdateMarker(mClusterMarkers.get(i));
+
+                                    }
+
+
+                                } catch (NullPointerException e) {
+                                    Log.e(TAG, "retrieveUserLocations: NullPointerException: " + e.getMessage());
+                                }
                             }
-
-                            Log.d(TAG, "onEvent: user list size: " + mUserList.size());
                         }
                     }
                 });
+            }
+        }catch (IllegalStateException e){
+            Log.e(TAG, "retrieveUserLocations: Fragment was destroyed during Firestore query. Ending query." + e.getMessage() );
+        }
+
     }
 
-    private void getUserLocation(User user){
-        DocumentReference locationsRef = firebaseFirestore
-                .collection("User locations")
-                .document(user.getUser_id());
+    private void startLocationService(){
+        if(!isLocationServiceRunning()){
+            Intent serviceIntent = new Intent(this, LocationService.class);
+//        this.startService(serviceIntent);
 
-        locationsRef.get().addOnCompleteListener(new OnCompleteListener<DocumentSnapshot>() {
-            @Override
-            public void onComplete(@NonNull Task<DocumentSnapshot> task) {
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O){
 
-                if(task.isSuccessful()){
-                    if(task.getResult().toObject(UserLocation.class) != null){
-
-                        mUserLocations.add(task.getResult().toObject(UserLocation.class));
-                        Log.d(TAG, "onComplete: Added user location to the list: "
-                                + mUserLocation.getUser().getUsername());
-                        setUserPosition();
-                    }
-                }
+                MapsActivity.this.startForegroundService(serviceIntent);
+            }else{
+                startService(serviceIntent);
             }
-        });
+        }
+    }
 
-
+    private boolean isLocationServiceRunning() {
+        ActivityManager manager = (ActivityManager) getSystemService(ACTIVITY_SERVICE);
+        for (ActivityManager.RunningServiceInfo service : manager.getRunningServices(Integer.MAX_VALUE)){
+            if("com.example.vanetapp.LocationService".equals(service.service.getClassName())) {
+                Log.d(TAG, "isLocationServiceRunning: location service is already running.");
+                return true;
+            }
+        }
+        Log.d(TAG, "isLocationServiceRunning: location service is not running.");
+        return false;
     }
 
     //beginning of the permission checks
@@ -432,17 +513,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
     }
     //end of the permission check
 
-    //verifying if the current user's location is the authenticated user' location
-    //to be implemented after retrieving other user locations
-    private void setUserPosition() {
-        for (UserLocation userLocation: mUserLocations){
-            if(userLocation.getUser().getUser_id().equals(FirebaseAuth.getInstance().getUid())){
-                mUserPosition = userLocation;
-                addMapMarkers();
-            }
-        }
 
-    }
 
     @Override
     public void onMapReady(GoogleMap googleMap) {
@@ -477,8 +548,8 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
         if (checkMapServices()) {
             if (mLocationPermissionGranted) {
                 //do what you intend with the app if the permission is granted
-
                 getUserDetails();
+
             } else {
                 getLocationPermission();
             }
@@ -512,6 +583,8 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
         if(mUserListEventListener != null){
             mUserListEventListener.remove();
         }
+
+        stopLocationUpdates();
     }
 
     @Override
