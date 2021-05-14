@@ -1,16 +1,19 @@
 package com.example.vanetapp;
 
-public class User {
+public class User{
+
     private String user_id;
     private String username;
     private String phone;
     private String email;
+    private String avatar;
 
-    public User(String user_id, String username, String phone, String email) {
+    public User(String user_id, String username, String phone, String email, String avatar) {
         this.user_id = user_id;
         this.username = username;
         this.phone = phone;
         this.email = email;
+        this.avatar = avatar;
     }
 
     public User() {
@@ -48,6 +51,14 @@ public class User {
         this.email = email;
     }
 
+    public String getAvatar() {
+        return avatar;
+    }
+
+    public void setAvatar(String avatar) {
+        this.avatar = avatar;
+    }
+
     @Override
     public String toString() {
         return "User{" +
@@ -55,6 +66,7 @@ public class User {
                 ", username='" + username + '\'' +
                 ", phone='" + phone + '\'' +
                 ", email='" + email + '\'' +
+                ", avatar='" + avatar + '\'' +
                 '}';
     }
 }

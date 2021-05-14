@@ -46,6 +46,7 @@ import com.google.firebase.firestore.GeoPoint;
 import com.google.firebase.firestore.ListenerRegistration;
 import com.google.firebase.firestore.QueryDocumentSnapshot;
 import com.google.firebase.firestore.QuerySnapshot;
+import com.google.maps.android.clustering.ClusterManager;
 
 import java.util.ArrayList;
 
@@ -69,6 +70,9 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
     private ArrayList<User> mUserList = new ArrayList<>();
     private ArrayList<UserLocation> mUserLocations = new ArrayList<>();
     private ListenerRegistration mUserListEventListener;
+    private ClusterManager<ClusterMarker> mClusterManager;
+    private MyClusterManagerRenderer mClusterManagerRenderer;
+    private ArrayList<ClusterMarker> mClusterMarkers = new ArrayList<>();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -81,7 +85,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
         firebaseFirestore = FirebaseFirestore.getInstance();
         initGoogleMap(savedInstanceState);
 
-        getUsers();
+
 
 
     }
@@ -135,6 +139,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
                         Log.d(TAG, "saveUserLocation: \ninserted user location into database." +
                                 "\n latitude: " + mUserLocation.getGeo_point().getLatitude() +
                                 "\n longitude: " + mUserLocation.getGeo_point().getLongitude());
+                        getUsers();
                     }
                 }
             });
@@ -158,8 +163,8 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
                     mUserLocation.setGeo_point(geoPoint);
                     mUserLocation.setTimestamp(null);
                     saveUserLocation();
-                    startLocationService();
-                    setCameraView();
+
+
                 }
             }
         });
@@ -191,13 +196,71 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
         return false;
     }
 
+    //adding map markers
+    private void addMapMarkers(){
+
+        if(mMap != null){
+
+            if(mClusterManager == null){
+                mClusterManager = new ClusterManager<ClusterMarker>(this, mMap);
+            }
+            if(mClusterManagerRenderer == null){
+                mClusterManagerRenderer = new MyClusterManagerRenderer(
+                        this,
+                        mMap,
+                        mClusterManager
+                );
+                mClusterManager.setRenderer(mClusterManagerRenderer);
+            }
+
+            for(UserLocation userLocation: mUserLocations){
+
+                Log.d(TAG, "addMapMarkers: location: " + userLocation.getGeo_point().toString());
+                try{
+                    String snippet = "";
+                    if(userLocation.getUser().getUser_id().equals(FirebaseAuth.getInstance().getUid())){
+                        snippet = "This is you";
+                    }
+                    else{
+                        snippet = "This is:  " + userLocation.getUser().getUsername();
+                    }
+
+                    int avatar = R.drawable.default_avatar; // set the default avatar
+                    try{
+                        avatar = Integer.parseInt(userLocation.getUser().getAvatar());
+                    }catch (NumberFormatException e){
+                        Log.d(TAG, "addMapMarkers: no avatar for " + userLocation.getUser().getUsername() + ", setting default.");
+                    }
+                    ClusterMarker newClusterMarker = new ClusterMarker(
+                            new LatLng(userLocation.getGeo_point().getLatitude(), userLocation.getGeo_point().getLongitude()),
+                            userLocation.getUser().getUsername(),
+                            snippet,
+                            avatar,
+                            userLocation.getUser()
+                    );
+                    mClusterManager.addItem(newClusterMarker);
+                    mClusterMarkers.add(newClusterMarker);
+
+                }catch (NullPointerException e){
+                    Log.e(TAG, "addMapMarkers: NullPointerException: " + e.getMessage() );
+                }
+
+            }
+            mClusterManager.cluster();
+            setCameraView();
+
+        }
+    }
+
     //Overall map view window : 0.04 * 0.04 = 0.0016
     private void setCameraView(){
+
+        //setUserPosition();
         //change mUserLocation to mUserPosition after getting other user locations
-        double bottomBoundary = mUserLocation.getGeo_point().getLatitude() - .04;
-        double topBoundary = mUserLocation.getGeo_point().getLatitude() + .04;
-        double leftBoundary = mUserLocation.getGeo_point().getLongitude() - .04;
-        double rightBoundary = mUserLocation.getGeo_point().getLongitude()  + .04;
+        double bottomBoundary = mUserPosition.getGeo_point().getLatitude() - .04;
+        double topBoundary = mUserPosition.getGeo_point().getLatitude() + .04;
+        double leftBoundary = mUserPosition.getGeo_point().getLongitude() - .04;
+        double rightBoundary = mUserPosition.getGeo_point().getLongitude()  + .04;
 
         mMapBoundary = new LatLngBounds(
                 new LatLng(bottomBoundary, leftBoundary),
@@ -205,6 +268,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
         );
 
         mMap.moveCamera(CameraUpdateFactory.newLatLngBounds(mMapBoundary, 0));
+        startLocationService();
     }
 
     private void getUsers() {
@@ -251,15 +315,9 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
                     if(task.getResult().toObject(UserLocation.class) != null){
 
                         mUserLocations.add(task.getResult().toObject(UserLocation.class));
-                        Log.d(TAG, "onComplete: Added user location to the list: " + mUserLocation.getUser().getUsername());
-                        //checking if the User locations are indeed added to the list
-/*                        if(mUserLocations.isEmpty()){
-                            Log.d(TAG, "Empty list ");
-                        }else{
-                            for (UserLocation userLocation : mUserLocations){
-                                Log.d(TAG, "onCreate: Username: " + userLocation.getUser().getUsername());
-                            }
-                        }*/
+                        Log.d(TAG, "onComplete: Added user location to the list: "
+                                + mUserLocation.getUser().getUsername());
+                        setUserPosition();
                     }
                 }
             }
@@ -363,6 +421,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
             case PERMISSIONS_REQUEST_ENABLE_GPS: {
                 if (mLocationPermissionGranted) {
                     //do what you intend with the app if the permission is granted
+
                     getUserDetails();
                 } else {
                     getLocationPermission();
@@ -375,13 +434,15 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
 
     //verifying if the current user's location is the authenticated user' location
     //to be implemented after retrieving other user locations
-/*    private void setUserPosition() {
+    private void setUserPosition() {
         for (UserLocation userLocation: mUserLocations){
             if(userLocation.getUser().getUser_id().equals(FirebaseAuth.getInstance().getUid())){
                 mUserPosition = userLocation;
+                addMapMarkers();
             }
         }
-    }*/
+
+    }
 
     @Override
     public void onMapReady(GoogleMap googleMap) {
@@ -416,6 +477,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
         if (checkMapServices()) {
             if (mLocationPermissionGranted) {
                 //do what you intend with the app if the permission is granted
+
                 getUserDetails();
             } else {
                 getLocationPermission();
