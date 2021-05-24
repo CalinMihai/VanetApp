@@ -12,11 +12,13 @@ public class UserLocation implements Parcelable {
     private User user;
     private GeoPoint geo_point;
     private @ServerTimestamp Date timestamp;
+    private double speed;
 
-    public UserLocation(User user, GeoPoint geo_point, Date timestamp) {
+    public UserLocation(User user, GeoPoint geo_point, Date timestamp, double speed) {
         this.user = user;
         this.geo_point = geo_point;
         this.timestamp = timestamp;
+        this.speed = speed;
     }
 
     public UserLocation() {
@@ -59,6 +61,14 @@ public class UserLocation implements Parcelable {
 
     public void setTimestamp(Date timestamp) {
         this.timestamp = timestamp;
+    }
+
+    public double getSpeed() {
+        return speed;
+    }
+
+    public void setSpeed(double speed) {
+        this.speed = speed;
     }
 
     @Override

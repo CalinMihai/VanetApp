@@ -1,11 +1,13 @@
 package com.example.vanetapp;
 
 import android.Manifest;
+import android.app.AlertDialog;
 import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.Service;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.location.Location;
@@ -39,7 +41,7 @@ import static com.example.vanetapp.MapsActivity.speedView;
 
 public class LocationService extends Service {
 
-    private int kmhSpeed;
+    public int kmhSpeed;
     private double dSpeed;
     private double acceleration;
 
@@ -113,14 +115,19 @@ public class LocationService extends Service {
                         if (location != null) {
                             User user = ((UserClient)(getApplicationContext())).getUser();
                             GeoPoint geoPoint = new GeoPoint(location.getLatitude(), location.getLongitude());
-                            UserLocation userLocation = new UserLocation(user, geoPoint, null);
-                            saveUserLocation(userLocation);
+
                             if(location.hasSpeed()){
                                 dSpeed = location.getSpeed();
                                 acceleration = 3.6 * (dSpeed);
-                                kmhSpeed = (int) (Math.round(acceleration));
+                                kmhSpeed = (int) (Math.round(3.6 * (location.getSpeed())));
                                 speedView.setText("Km/h: " + kmhSpeed);
+                            }else{
+                                kmhSpeed = 0;
                             }
+
+                            UserLocation userLocation = new UserLocation(user, geoPoint, null, kmhSpeed);
+                            saveUserLocation(userLocation);
+
                         }
                     }
                 },
@@ -140,7 +147,8 @@ public class LocationService extends Service {
                     if(task.isSuccessful()){
                         Log.d(TAG, "onComplete: \ninserted user location into database." +
                                 "\n latitude: " + userLocation.getGeo_point().getLatitude() +
-                                "\n longitude: " + userLocation.getGeo_point().getLongitude());
+                                "\n longitude: " + userLocation.getGeo_point().getLongitude() +
+                                "\n speed: " + userLocation.getSpeed());
                     }
                 }
             });

@@ -1,17 +1,16 @@
 package com.example.vanetapp;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
-import androidx.fragment.app.FragmentActivity;
 
 import android.Manifest;
 import android.app.ActivityManager;
 import android.app.Dialog;
 import android.content.Context;
-import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.location.Location;
@@ -19,6 +18,7 @@ import android.location.LocationManager;
 import android.os.Bundle;
 import android.os.Handler;
 import android.util.Log;
+import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -30,16 +30,13 @@ import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.MapView;
 import com.google.android.gms.maps.OnMapReadyCallback;
-import com.google.android.gms.maps.SupportMapFragment;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.LatLngBounds;
-import com.google.android.gms.maps.model.MarkerOptions;
 import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.Task;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.firestore.CollectionReference;
 import com.google.firebase.firestore.DocumentReference;
-import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.EventListener;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.FirebaseFirestoreException;
@@ -57,27 +54,37 @@ import static com.example.vanetapp.Constants.PERMISSIONS_REQUEST_ACCESS_FINE_LOC
 import static com.example.vanetapp.Constants.PERMISSIONS_REQUEST_ENABLE_GPS;
 
 public class MapsActivity extends AppCompatActivity implements OnMapReadyCallback {
+    public static TextView speedView;
 
-    private MapView mMapView;
     private boolean mLocationPermissionGranted = false;
     private static final String TAG = "MapsActivity";
-    private FusedLocationProviderClient mFusedLocationClient;
-    private UserLocation mUserLocation;
+    private static final int LOCATION_UPDATE_INTERVAL = 3000;
+    private Button profile_button;
+    double distanceToUser;
+    boolean isDangerAlertDisplayed;
+    boolean isRunnableRunning;
+    boolean addedMapMarkers;
+
     private FirebaseFirestore firebaseFirestore;
+    private MapView mMapView;
     private GoogleMap mMap;
     private LatLngBounds mMapBoundary;
+
+    private FusedLocationProviderClient mFusedLocationClient;
+    private UserLocation mUserLocation;
     private UserLocation mUserPosition;
-    public static TextView speedView;
-    private ArrayList<User> mUserList = new ArrayList<>();
-    private ArrayList<UserLocation> mUserLocations = new ArrayList<>();
+
     private ListenerRegistration mUserListEventListener;
+    private ListenerRegistration mUserLocationEventListener;
     private ClusterManager<ClusterMarker> mClusterManager;
     private MyClusterManagerRenderer mClusterManagerRenderer;
     private ArrayList<ClusterMarker> mClusterMarkers = new ArrayList<>();
+    private ArrayList<User> mUserList = new ArrayList<>();
+    private ArrayList<UserLocation> mUserLocations = new ArrayList<>();
 
     private Handler mHandler = new Handler();
     private Runnable mRunnable;
-    private static final int LOCATION_UPDATE_INTERVAL = 3000;
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -90,8 +97,12 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
         firebaseFirestore = FirebaseFirestore.getInstance();
         initGoogleMap(savedInstanceState);
 
+        isDangerAlertDisplayed = false;
+        isRunnableRunning = false;
+        addedMapMarkers = false;
 
-
+        profile_button  = findViewById(R.id.profileBtn);
+        profile_button.setOnClickListener(view -> openProfileActivity());
 
     }
 
@@ -105,6 +116,9 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
     }
 
     private void getUserDetails(){
+        if(addedMapMarkers) {
+            addedMapMarkers = false;
+        }
         if(mUserLocation == null){
             mUserLocation = new UserLocation();
 
@@ -112,18 +126,16 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
                     .collection("users")
                     .document(FirebaseAuth.getInstance().getUid());
 
-            userRef.get().addOnCompleteListener(new OnCompleteListener<DocumentSnapshot>() {
-                @Override
-                public void onComplete(@NonNull Task<DocumentSnapshot> task) {
-                    if(task.isSuccessful()){
-                        Log.d(TAG, "onComplete: successfully get the user details.");
-                        User user = task.getResult().toObject(User.class);
-                        mUserLocation.setUser(user);
-                        //setting the User singleton
-                        ((UserClient)getApplicationContext()).setUser(user);
+            userRef.get().addOnCompleteListener(task -> {
+                if(task.isSuccessful()){
+                    Log.d(TAG, "onComplete: successfully get the user details.");
+                    User user = task.getResult().toObject(User.class);
+                    mUserLocation.setUser(user);
 
-                        getLastKnownLocation();
-                    }
+                    //setting the User singleton
+                    ((UserClient)getApplicationContext()).setUser(user);
+
+                    getLastKnownLocation();
                 }
             });
         }
@@ -132,6 +144,33 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
         }
     }
 
+
+    //finding out what was the the last known location of the user
+    private void getLastKnownLocation() {
+        Log.d(TAG, "getLastKnownLocation: called.");
+        if (ActivityCompat.checkSelfPermission(this,
+                Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            return;
+        }
+        mFusedLocationClient.getLastLocation().addOnCompleteListener(task -> {
+            if (task.isSuccessful()) {
+                Location location = task.getResult();
+                GeoPoint geoPoint = new GeoPoint(location.getLatitude(), location.getLongitude());
+                Log.d(TAG, "onComplete: latitude " + geoPoint.getLatitude());
+                Log.d(TAG, "onComplete: longitude " + geoPoint.getLongitude());
+
+                mUserLocation.setGeo_point(geoPoint);
+                mUserLocation.setTimestamp(null);
+                mUserLocation.setSpeed(0);
+
+                saveUserLocation();
+
+            }
+        });
+
+    }
+
+    //setting the new information into the database
     private void saveUserLocation(){
         if(mUserLocation != null){
             DocumentReference locationRef = firebaseFirestore
@@ -143,7 +182,9 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
                     if(task.isSuccessful()){
                         Log.d(TAG, "saveUserLocation: \ninserted user location into database." +
                                 "\n latitude: " + mUserLocation.getGeo_point().getLatitude() +
-                                "\n longitude: " + mUserLocation.getGeo_point().getLongitude());
+                                "\n longitude: " + mUserLocation.getGeo_point().getLongitude() +
+                                "\n speed: " + mUserLocation.getSpeed());
+
                         getUsers();
                     }
                 }
@@ -151,32 +192,8 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
         }
     }
 
-    private void getLastKnownLocation() {
-        Log.d(TAG, "getLastKnownLocation: called.");
-        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-            return;
-        }
-        mFusedLocationClient.getLastLocation().addOnCompleteListener(new OnCompleteListener<Location>() {
-            @Override
-            public void onComplete(@NonNull Task<Location> task) {
-                if (task.isSuccessful()) {
-                    Location location = task.getResult();
-                    GeoPoint geoPoint = new GeoPoint(location.getLatitude(), location.getLongitude());
-                    Log.d(TAG, "onComplete: latitude " + geoPoint.getLatitude());
-                    Log.d(TAG, "onComplete: longitude " + geoPoint.getLongitude());
 
-                    mUserLocation.setGeo_point(geoPoint);
-                    mUserLocation.setTimestamp(null);
-                    saveUserLocation();
-
-
-                }
-            }
-        });
-
-    }
-
-
+    //getting all the users from the database
     private void getUsers() {
         CollectionReference usersRef = firebaseFirestore
                 .collection("users");
@@ -184,7 +201,8 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
         mUserListEventListener = usersRef
                 .addSnapshotListener(new EventListener<QuerySnapshot>() {
                     @Override
-                    public void onEvent(@javax.annotation.Nullable QuerySnapshot queryDocumentSnapshots, @javax.annotation.Nullable FirebaseFirestoreException e) {
+                    public void onEvent(@javax.annotation.Nullable QuerySnapshot queryDocumentSnapshots,
+                                        @javax.annotation.Nullable FirebaseFirestoreException e) {
                         if (e != null) {
                             Log.e(TAG, "onEvent: Listen failed.", e);
                             return;
@@ -196,9 +214,11 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
                             mUserList.clear();
                             mUserList = new ArrayList<>();
 
+                            //adding then users to a list
                             for (QueryDocumentSnapshot doc : queryDocumentSnapshots) {
                                 User user = doc.toObject(User.class);
                                 mUserList.add(user);
+                                //for each user we'll also get the location from the database
                                 getUserLocation(user);
                             }
 
@@ -213,18 +233,15 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
                 .collection("User locations")
                 .document(user.getUser_id());
 
-        locationsRef.get().addOnCompleteListener(new OnCompleteListener<DocumentSnapshot>() {
-            @Override
-            public void onComplete(@NonNull Task<DocumentSnapshot> task) {
+        locationsRef.get().addOnCompleteListener(task -> {
 
-                if(task.isSuccessful()){
-                    if(task.getResult().toObject(UserLocation.class) != null){
-
-                        mUserLocations.add(task.getResult().toObject(UserLocation.class));
-                        Log.d(TAG, "onComplete: Added user location to the list: "
-                                + mUserLocation.getUser().getUsername());
-                        setUserPosition();
-                    }
+            if(task.isSuccessful()){
+                if(task.getResult().toObject(UserLocation.class) != null){
+                    //making a list containing all the user locations
+                    mUserLocations.add(task.getResult().toObject(UserLocation.class));
+                    Log.d(TAG, "onComplete: Added user location to the list: "
+                            + mUserLocation.getUser().getUsername());
+                    setUserPosition();
                 }
             }
         });
@@ -236,31 +253,15 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
         for (UserLocation userLocation: mUserLocations){
             if(userLocation.getUser().getUser_id().equals(FirebaseAuth.getInstance().getUid())){
                 mUserPosition = userLocation;
-                addMapMarkers();
+
             }
         }
 
-    }
+        //if the current user's location has been successfully found we can add the markers
+        if(mUserPosition != null){
+            addMapMarkers();
+        }
 
-    //Overall map view window : 0.04 * 0.04 = 0.0016
-    private void setCameraView(){
-
-        //setUserPosition();
-        //change mUserLocation to mUserPosition after getting other user locations
-        double bottomBoundary = mUserPosition.getGeo_point().getLatitude() - .04;
-        double topBoundary = mUserPosition.getGeo_point().getLatitude() + .04;
-        double leftBoundary = mUserPosition.getGeo_point().getLongitude() - .04;
-        double rightBoundary = mUserPosition.getGeo_point().getLongitude()  + .04;
-
-        mMapBoundary = new LatLngBounds(
-                new LatLng(bottomBoundary, leftBoundary),
-                new LatLng(topBoundary, rightBoundary)
-        );
-
-        mMap.moveCamera(CameraUpdateFactory.newLatLngBounds(mMapBoundary, 0));
-        startLocationService();
-        // starting the location updates
-        startUserLocationsRunnable();
     }
 
     //adding map markers
@@ -280,6 +281,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
                 mClusterManager.setRenderer(mClusterManagerRenderer);
             }
 
+            //for each user location we'll make customize marker on the map
             for(UserLocation userLocation: mUserLocations){
 
                 Log.d(TAG, "addMapMarkers: location: " + userLocation.getGeo_point().toString());
@@ -296,16 +298,20 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
                     try{
                         avatar = Integer.parseInt(userLocation.getUser().getAvatar());
                     }catch (NumberFormatException e){
-                        Log.d(TAG, "addMapMarkers: no avatar for " + userLocation.getUser().getUsername() + ", setting default.");
+                        Log.d(TAG, "addMapMarkers: no avatar for " +
+                                userLocation.getUser().getUsername() + ", setting default.");
                     }
                     ClusterMarker newClusterMarker = new ClusterMarker(
-                            new LatLng(userLocation.getGeo_point().getLatitude(), userLocation.getGeo_point().getLongitude()),
-                            userLocation.getUser().getUsername(),
-                            snippet,
-                            avatar,
-                            userLocation.getUser()
+                            new LatLng(userLocation.getGeo_point().getLatitude(),
+                                    userLocation.getGeo_point().getLongitude()),
+                                    userLocation.getUser().getUsername(),
+                                    snippet,
+                                    avatar,
+                                    userLocation.getUser()
                     );
+                    //adding the marker to the manager
                     mClusterManager.addItem(newClusterMarker);
+                    //and also adding them to a list because it makes it easier to be retrieved
                     mClusterMarkers.add(newClusterMarker);
 
                 }catch (NullPointerException e){
@@ -314,17 +320,49 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
 
             }
             mClusterManager.cluster();
+            addedMapMarkers = true;
+            //focusing the camera view on the current user location
             setCameraView();
 
         }
     }
 
+    //Overall map view window : 0.04 * 0.04 = 0.0016
+    private void setCameraView(){
+
+        double bottomBoundary = mUserPosition.getGeo_point().getLatitude() - .04;
+        double topBoundary = mUserPosition.getGeo_point().getLatitude() + .04;
+        double leftBoundary = mUserPosition.getGeo_point().getLongitude() - .04;
+        double rightBoundary = mUserPosition.getGeo_point().getLongitude()  + .04;
+
+        mMapBoundary = new LatLngBounds(
+                new LatLng(bottomBoundary, leftBoundary),
+                new LatLng(topBoundary, rightBoundary)
+        );
+
+        mMap.moveCamera(CameraUpdateFactory.newLatLngBounds(mMapBoundary, 0));
+        //starting the location service
+        startLocationService();
+        // starting the location updates
+        if(!isRunnableRunning){
+            startUserLocationsRunnable();
+        }else{
+            Log.d(TAG, "UserLocationRunnable is already running.");
+        }
+
+    }
+
     private void startUserLocationsRunnable(){
+        isRunnableRunning = true;
         Log.d(TAG, "startUserLocationsRunnable: starting runnable for retrieving updated locations.");
         mHandler.postDelayed(mRunnable = new Runnable() {
             @Override
             public void run() {
+                //constantly getting the geo point information to update the markers location
                 retrieveUserLocations();
+                //constantly getting  the user locations from the database to verify their speed,
+                //and the distance between them
+                verifyDistance();
                 mHandler.postDelayed(mRunnable, LOCATION_UPDATE_INTERVAL);
             }
         }, LOCATION_UPDATE_INTERVAL);
@@ -332,10 +370,11 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
 
     private void stopLocationUpdates(){
         mHandler.removeCallbacks(mRunnable);
+        isRunnableRunning = false;
     }
 
     private void retrieveUserLocations(){
-        Log.d(TAG, "retrieveUserLocations: retrieving location of all users in the chatroom.");
+        Log.d(TAG, "retrieveUserLocations: retrieving location of all users");
 
         try{
             for(final ClusterMarker clusterMarker: mClusterMarkers){
@@ -344,39 +383,41 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
                         .collection("User locations")
                         .document(clusterMarker.getUser().getUser_id());
 
-                userLocationRef.get().addOnCompleteListener(new OnCompleteListener<DocumentSnapshot>() {
-                    @Override
-                    public void onComplete(@NonNull Task<DocumentSnapshot> task) {
-                        if(task.isSuccessful()){
+                userLocationRef.get().addOnCompleteListener(task -> {
+                    if(task.isSuccessful()){
 
-                            final UserLocation updatedUserLocation = task.getResult().toObject(UserLocation.class);
+                        final UserLocation updatedUserLocation = task.getResult().toObject(UserLocation.class);
 
-                            // update the location
-                            for (int i = 0; i < mClusterMarkers.size(); i++) {
-                                try {
-                                    if (mClusterMarkers.get(i).getUser().getUser_id().equals(updatedUserLocation.getUser().getUser_id())) {
+                        // update the marker location on the map
+                        for (int i = 0; i < mClusterMarkers.size(); i++) {
+                            try {
+                                if (mClusterMarkers.get(i).getUser().getUser_id().
+                                        equals(updatedUserLocation.getUser().getUser_id())) {
 
-                                        LatLng updatedLatLng = new LatLng(
-                                                updatedUserLocation.getGeo_point().getLatitude(),
-                                                updatedUserLocation.getGeo_point().getLongitude()
-                                        );
+                                    LatLng updatedLatLng = new LatLng(
+                                            updatedUserLocation.getGeo_point().getLatitude(),
+                                            updatedUserLocation.getGeo_point().getLongitude()
+                                    );
 
-                                        mClusterMarkers.get(i).setPosition(updatedLatLng);
-                                        mClusterManagerRenderer.setUpdateMarker(mClusterMarkers.get(i));
+                                    mClusterMarkers.get(i).setPosition(updatedLatLng);
+                                    mClusterManagerRenderer.setUpdateMarker(mClusterMarkers.get(i));
 
-                                    }
-
-
-                                } catch (NullPointerException e) {
-                                    Log.e(TAG, "retrieveUserLocations: NullPointerException: " + e.getMessage());
                                 }
+
+
+                            } catch (NullPointerException e) {
+                                Log.e(TAG, "retrieveUserLocations: NullPointerException: " + e.getMessage());
                             }
+
                         }
+
                     }
+
                 });
             }
         }catch (IllegalStateException e){
-            Log.e(TAG, "retrieveUserLocations: Fragment was destroyed during Firestore query. Ending query." + e.getMessage() );
+            Log.e(TAG, "retrieveUserLocations: Fragment was destroyed during Firestore query." +
+                    " Ending query." + e.getMessage() );
         }
 
     }
@@ -419,11 +460,9 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
         final AlertDialog.Builder builder = new AlertDialog.Builder(this);
         builder.setMessage("This application requires GPS to work properly, do you want to enable it?")
                 .setCancelable(false)
-                .setPositiveButton("Yes", new DialogInterface.OnClickListener() {
-                    public void onClick(@SuppressWarnings("unused") final DialogInterface dialog, @SuppressWarnings("unused") final int id) {
-                        Intent enableGpsIntent = new Intent(android.provider.Settings.ACTION_LOCATION_SOURCE_SETTINGS);
-                        startActivityForResult(enableGpsIntent, PERMISSIONS_REQUEST_ENABLE_GPS);
-                    }
+                .setPositiveButton("Yes", (dialog, id) -> {
+                    Intent enableGpsIntent = new Intent(android.provider.Settings.ACTION_LOCATION_SOURCE_SETTINGS);
+                    startActivityForResult(enableGpsIntent, PERMISSIONS_REQUEST_ENABLE_GPS);
                 });
         final AlertDialog alert = builder.create();
         alert.show();
@@ -479,8 +518,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
     }
 
     @Override
-    public void onRequestPermissionsResult(int requestCode,
-                                           @NonNull String[] permissions,
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions,
                                            @NonNull int[] grantResults) {
         mLocationPermissionGranted = false;
         switch (requestCode) {
@@ -513,7 +551,102 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
     }
     //end of the permission check
 
+    //message to be showed when a dangerous situation might occur
+    private void buildAlertMessageDanger() {
+        //boolean so that only one pop-up appears at a time
+        isDangerAlertDisplayed = true;
 
+        final AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setMessage("Attention! Danger ahead.")
+                .setCancelable(false)
+                .setNeutralButton("OK", (dialogInterface, i) -> {
+                    dialogInterface.dismiss();
+                    isDangerAlertDisplayed = false;
+                });
+        final AlertDialog alert = builder.create();
+        alert.show();
+    }
+
+    private void verifyDistance() {
+
+        //getting the user location from the database before every verification for accurate readings
+        CollectionReference locationsRef = firebaseFirestore
+                .collection("User locations");
+        mUserLocationEventListener = locationsRef
+                .addSnapshotListener(new EventListener<QuerySnapshot>() {
+                    @Override
+                    public void onEvent(@Nullable @org.jetbrains.annotations
+                            .Nullable QuerySnapshot queryDocumentSnapshots
+                            , @Nullable @org.jetbrains.annotations
+                            .Nullable FirebaseFirestoreException error) {
+                        if (error != null) {
+                            Log.e(TAG, "onEvent: Listen failed.", error);
+                            return;
+                        }
+                        if (queryDocumentSnapshots != null) {
+
+                            // Clear the list and add all the user locations again
+                            mUserLocations.clear();
+                            mUserLocations = new ArrayList<>();
+
+                            for (QueryDocumentSnapshot doc : queryDocumentSnapshots) {
+                                UserLocation userLocation = doc.toObject(UserLocation.class);
+                                mUserLocations.add(userLocation);
+
+                                if(userLocation.getUser().getUser_id().equals(FirebaseAuth.getInstance().getUid())){
+                                    mUserPosition = userLocation;
+                                }
+
+                            }
+
+                            Log.d(TAG, "onEvent: userLocations size: " + mUserLocations.size());
+                        }
+                    }
+                });
+
+        for (UserLocation userLocation: mUserLocations){
+            if(userLocation.getUser().getUser_id() != mUserPosition.getUser().getUser_id()){
+                distanceToUser = distance(userLocation.getGeo_point().getLatitude(),
+                        userLocation.getGeo_point().getLongitude(),
+                        mUserPosition.getGeo_point().getLatitude(),
+                        mUserPosition.getGeo_point().getLongitude());
+                Log.d(TAG, "distance between " + mUserPosition.getUser().getUsername()
+                        + " and " + userLocation.getUser().getUsername() +
+                        " is :" + distanceToUser);
+                Log.d(TAG, "My speed is: " + mUserPosition.getSpeed() +
+                        " and his speed is :" + userLocation.getSpeed());
+
+                if((userLocation.getSpeed() >= 80 || mUserPosition.getSpeed() >= 80) && distanceToUser <= 0.1){
+                    if(isDangerAlertDisplayed != true){
+                        buildAlertMessageDanger();
+                        Log.d(TAG, "Danger!!");
+                    }
+                }
+
+            }
+        }
+    }
+
+    private double distance(double lat1, double lon1, double lat2, double lon2) {
+        double theta = lon1 - lon2;
+        double dist = Math.sin(deg2rad(lat1))
+                * Math.sin(deg2rad(lat2))
+                + Math.cos(deg2rad(lat1))
+                * Math.cos(deg2rad(lat2))
+                * Math.cos(deg2rad(theta));
+        dist = Math.acos(dist);
+        dist = rad2deg(dist);
+        dist = dist * 60 * 1.1515;
+        return (dist);
+    }
+
+    private double deg2rad(double deg) {
+        return (deg * Math.PI / 180.0);
+    }
+
+    private double rad2deg(double rad) {
+        return (rad * 180.0 / Math.PI);
+    }
 
     @Override
     public void onMapReady(GoogleMap googleMap) {
@@ -548,6 +681,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
         if (checkMapServices()) {
             if (mLocationPermissionGranted) {
                 //do what you intend with the app if the permission is granted
+
                 getUserDetails();
 
             } else {
@@ -556,10 +690,17 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
         }
     }
 
+    private void openProfileActivity() {
+        Intent intent = new Intent(this, ProfileActivity.class);
+        startActivity(intent);
+    }
+
+
     @Override
     public void onStart() {
         super.onStart();
         mMapView.onStart();
+
     }
 
     @Override
@@ -583,7 +724,9 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
         if(mUserListEventListener != null){
             mUserListEventListener.remove();
         }
-
+        if(mUserLocationEventListener != null){
+            mUserLocationEventListener.remove();
+        }
         stopLocationUpdates();
     }
 

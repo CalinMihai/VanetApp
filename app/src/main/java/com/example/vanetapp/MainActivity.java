@@ -41,92 +41,17 @@ import static com.example.vanetapp.Constants.PERMISSIONS_REQUEST_ACCESS_FINE_LOC
 import static com.example.vanetapp.Constants.PERMISSIONS_REQUEST_ENABLE_GPS;
 
 public class MainActivity extends AppCompatActivity {
-    private Button profile_button;
     private Button maps_button;
     private  static final String TAG = "MainActivity";
-
-    private ArrayList<User> mUserList = new ArrayList<>();
-    private ArrayList<UserLocation> mUserLocations = new ArrayList<>();
-    private ListenerRegistration mUserListEventListener;
-    private FirebaseFirestore firebaseFirestore;
-    private UserLocation mUserLocation;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        profile_button  = findViewById(R.id.profileBtn);
-        profile_button.setOnClickListener(view -> openProfileActivity());
-
         maps_button  = findViewById(R.id.mapsGpsBtn);
         maps_button.setOnClickListener(view -> openMapsActivity());
 
-        firebaseFirestore = FirebaseFirestore.getInstance();
-
-        /*getUsers();
-        Intent intent = new Intent();
-        intent.putExtra("myUserLocations", mUserLocations);*/
-    }
-
-    private void getUsers() {
-        CollectionReference usersRef = firebaseFirestore
-                .collection("users");
-
-        mUserListEventListener = usersRef
-                .addSnapshotListener(new EventListener<QuerySnapshot>() {
-                    @Override
-                    public void onEvent(@javax.annotation.Nullable QuerySnapshot queryDocumentSnapshots, @javax.annotation.Nullable FirebaseFirestoreException e) {
-                        if (e != null) {
-                            Log.e(TAG, "onEvent: Listen failed.", e);
-                            return;
-                        }
-
-                        if (queryDocumentSnapshots != null) {
-
-                            // Clear the list and add all the users again
-                            mUserList.clear();
-                            mUserList = new ArrayList<>();
-
-                            for (QueryDocumentSnapshot doc : queryDocumentSnapshots) {
-                                User user = doc.toObject(User.class);
-                                mUserList.add(user);
-                                getUserLocation(user);
-                            }
-
-                            Log.d(TAG, "onEvent: user list size: " + mUserList.size());
-                        }
-                    }
-                });
-    }
-
-    private void getUserLocation(User user){
-        DocumentReference locationsRef = firebaseFirestore
-                .collection("User locations")
-                .document(user.getUser_id());
-
-        locationsRef.get().addOnCompleteListener(new OnCompleteListener<DocumentSnapshot>() {
-            @Override
-            public void onComplete(@NonNull Task<DocumentSnapshot> task) {
-
-                if(task.isSuccessful()){
-                    if(task.getResult().toObject(UserLocation.class) != null){
-
-                        mUserLocations.add(task.getResult().toObject(UserLocation.class));
-                        Log.d(TAG, "onComplete: Added user location to the list: "
-                                + mUserLocation.getUser().getUsername());
-                    }
-                }
-            }
-        });
-
-
-    }
-
-
-    private void openProfileActivity() {
-        Intent intent = new Intent(this, ProfileActivity.class);
-        startActivity(intent);
     }
 
     private void openMapsActivity() {
