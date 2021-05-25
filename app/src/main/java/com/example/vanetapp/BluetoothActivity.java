@@ -18,7 +18,9 @@ public class BluetoothActivity extends AppCompatActivity {
 
     private static final String TAG = "BluetoothActivity";
     TextView bluetoothView;
+    TextView discoverableView;
     Button onOffBtn;
+    Button discoverable_btn;
 
     BluetoothAdapter mBluetoothAdapter;
 
@@ -27,7 +29,9 @@ public class BluetoothActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_bluetooth);
         onOffBtn = findViewById(R.id.onOffBtn);
+        discoverable_btn = findViewById(R.id.discoverableBtn);
         bluetoothView = findViewById(R.id.bluetoothView);
+        discoverableView = findViewById(R.id.discoverableView);
 
         mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
         onOffBtn.setOnClickListener(view -> {
@@ -65,6 +69,49 @@ public class BluetoothActivity extends AppCompatActivity {
         }
     };
 
+    /**
+     * Broadcast Receiver for changes made to bluetooth states such as:
+     * 1) Discoverability mode on/off or expire.
+     */
+    private final BroadcastReceiver mBroadcastReceiver2 = new BroadcastReceiver() {
+
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            final String action = intent.getAction();
+
+            if (action.equals(BluetoothAdapter.ACTION_SCAN_MODE_CHANGED)) {
+
+                int mode = intent.getIntExtra(BluetoothAdapter.EXTRA_SCAN_MODE, BluetoothAdapter.ERROR);
+
+                switch (mode) {
+                    //Device is in Discoverable Mode
+                    case BluetoothAdapter.SCAN_MODE_CONNECTABLE_DISCOVERABLE:
+                        Log.d(TAG, "mBroadcastReceiver2: Discoverability Enabled.");
+                        discoverableView.setText("Device is Visible");
+                        break;
+                    //Device not in discoverable mode
+                    case BluetoothAdapter.SCAN_MODE_CONNECTABLE:
+                        Log.d(TAG, "mBroadcastReceiver2: Discoverability Disabled. Able to receive connections.");
+                        discoverableView.setText("Device is Connectable");
+                        break;
+                    case BluetoothAdapter.SCAN_MODE_NONE:
+                        Log.d(TAG, "mBroadcastReceiver2: Discoverability Disabled. Not able to receive connections.");
+                        discoverableView.setText("Device is Invisible");
+                        break;
+                    case BluetoothAdapter.STATE_CONNECTING:
+                        Log.d(TAG, "mBroadcastReceiver2: Connecting....");
+                        break;
+                    case BluetoothAdapter.STATE_CONNECTED:
+                        Log.d(TAG, "mBroadcastReceiver2: Connected.");
+                        discoverableView.setText("Device is Connected");
+                        break;
+                }
+
+            }
+        }
+    };
+
+
     public void enableDisableBT(){
         if(mBluetoothAdapter == null){
             Log.d(TAG, "enableDisableBT: Does not have BT capabilities.");
@@ -88,12 +135,25 @@ public class BluetoothActivity extends AppCompatActivity {
 
     }
 
+    public void enableDisableDiscoverability(View view) {
+        Log.d(TAG, "enableDisableDiscoverability: Making device discoverable for 300 seconds.");
+
+        Intent discoverableIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_DISCOVERABLE);
+        discoverableIntent.putExtra(BluetoothAdapter.EXTRA_DISCOVERABLE_DURATION, 300);
+        startActivity(discoverableIntent);
+
+        IntentFilter intentFilter = new IntentFilter(mBluetoothAdapter.ACTION_SCAN_MODE_CHANGED);
+        registerReceiver(mBroadcastReceiver2,intentFilter);
+
+    }
+
 
     @Override
     protected void onDestroy() {
         Log.d(TAG, "onDestroy: called.");
         super.onDestroy();
         unregisterReceiver(mBroadcastReceiver1);
+        unregisterReceiver(mBroadcastReceiver2);
     }
 
 
