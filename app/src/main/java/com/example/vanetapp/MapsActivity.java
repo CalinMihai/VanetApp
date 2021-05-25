@@ -610,11 +610,11 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
                         userLocation.getGeo_point().getLongitude(),
                         mUserPosition.getGeo_point().getLatitude(),
                         mUserPosition.getGeo_point().getLongitude());
-                Log.d(TAG, "distance between " + mUserPosition.getUser().getUsername()
+                /*Log.d(TAG, "distance between " + mUserPosition.getUser().getUsername()
                         + " and " + userLocation.getUser().getUsername() +
                         " is :" + distanceToUser);
                 Log.d(TAG, "My speed is: " + mUserPosition.getSpeed() +
-                        " and his speed is :" + userLocation.getSpeed());
+                        " and his speed is :" + userLocation.getSpeed());*/
 
                 if((userLocation.getSpeed() >= 80 || mUserPosition.getSpeed() >= 80) && distanceToUser <= 0.1){
                     if(isDangerAlertDisplayed != true){

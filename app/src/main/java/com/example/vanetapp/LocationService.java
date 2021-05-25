@@ -120,7 +120,7 @@ public class LocationService extends Service {
                                 dSpeed = location.getSpeed();
                                 acceleration = 3.6 * (dSpeed);
                                 kmhSpeed = (int) (Math.round(3.6 * (location.getSpeed())));
-                                speedView.setText("Km/h: " + kmhSpeed);
+                                speedView.setText("\nYour speed is " + kmhSpeed + " km/h");
                             }else{
                                 kmhSpeed = 0;
                             }

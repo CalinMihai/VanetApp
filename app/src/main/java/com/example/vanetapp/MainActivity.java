@@ -42,6 +42,7 @@ import static com.example.vanetapp.Constants.PERMISSIONS_REQUEST_ENABLE_GPS;
 
 public class MainActivity extends AppCompatActivity {
     private Button maps_button;
+    private Button bluetooth_button;
     private  static final String TAG = "MainActivity";
 
     @Override
@@ -52,10 +53,18 @@ public class MainActivity extends AppCompatActivity {
         maps_button  = findViewById(R.id.mapsGpsBtn);
         maps_button.setOnClickListener(view -> openMapsActivity());
 
+        bluetooth_button  = findViewById(R.id.bluetoothBtn);
+        bluetooth_button.setOnClickListener(view -> openBluetoothActivity());
+
     }
 
     private void openMapsActivity() {
         Intent intent = new Intent(this, MapsActivity.class);
+        startActivity(intent);
+    }
+
+    private void openBluetoothActivity() {
+        Intent intent = new Intent(this, BluetoothActivity.class);
         startActivity(intent);
     }
 

@@ -14,7 +14,7 @@
         <RelativeLayout
             android:layout_width="match_parent"
             android:layout_height="0dp"
-            android:layout_weight="80"
+            android:layout_weight="90"
             android:id="@+id/map_container">
 
             <com.google.android.gms.maps.MapView
@@ -28,9 +28,10 @@
             android:layout_width="match_parent"
             android:layout_height="0dp"
             android:layout_weight="10"
-            android:text="Km/h"
+            android:fontFamily="@font/emblema_one"
+            android:text="\nYour speed is - km/h"
             android:textAlignment="center"
-            android:textSize="36sp"
+            android:textSize="24sp"
             android:textStyle="bold" />
 
         <Button
@@ -38,8 +39,11 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginStart="150dp"
-            android:layout_marginTop="30dp"
-            android:layout_marginEnd="25dp"
+            android:layout_marginTop="15dp"
+            android:layout_marginEnd="15dp"
+            android:background="#9C27B0"
+            android:backgroundTint="#673AB7"
+            android:fontFamily="@font/emblema_one"
             android:text="Profile" />
 
 
