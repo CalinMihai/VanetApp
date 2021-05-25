@@ -13,6 +13,7 @@ import android.os.Build;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
+import android.widget.AdapterView;
 import android.widget.Button;
 import android.widget.ListView;
 import android.widget.TextView;
@@ -20,7 +21,7 @@ import android.widget.Toast;
 
 import java.util.ArrayList;
 
-public class BluetoothActivity extends AppCompatActivity {
+public class BluetoothActivity extends AppCompatActivity implements AdapterView.OnItemClickListener{
 
     private static final String TAG = "BluetoothActivity";
     TextView bluetoothView;
@@ -45,11 +46,25 @@ public class BluetoothActivity extends AppCompatActivity {
         discoverableView = findViewById(R.id.discoverableView);
         newDevicesListView = findViewById(R.id.newDevicesListView);
 
+        //Broadcasts when bond state changes (ie:pairing)
+        IntentFilter filter = new IntentFilter(BluetoothDevice.ACTION_BOND_STATE_CHANGED);
+        registerReceiver(mBroadcastReceiver4, filter);
+
         mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
+        newDevicesListView.setOnItemClickListener(BluetoothActivity.this);
+
+        verifyBluetoothState();
+
         onOffBtn.setOnClickListener(view -> {
             Log.d(TAG, "onClick: enabling/disabling bluetooth.");
             enableDisableBT();
         });
+
+        discoverable_btn.setOnClickListener(view -> {
+            Log.d(TAG, "onClick: enabling/disabling discoverability.");
+            enableDisableDiscoverability();
+        });
+
 
         discoverDevices_btn.setOnClickListener(view -> {
             Log.d(TAG, "onClick: Looking for new devices.");
@@ -148,6 +163,39 @@ public class BluetoothActivity extends AppCompatActivity {
         }
     };
 
+    /**
+     * Broadcast Receiver that detects bond state changes (Pairing status changes)
+     */
+    private final BroadcastReceiver mBroadcastReceiver4 = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            final String action = intent.getAction();
+
+            if(action.equals(BluetoothDevice.ACTION_BOND_STATE_CHANGED)){
+                BluetoothDevice mDevice = intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE);
+                //3 cases:
+                //case1: bonded already
+                if (mDevice.getBondState() == BluetoothDevice.BOND_BONDED){
+                    Toast.makeText(BluetoothActivity.this, "Connected ",
+                            Toast.LENGTH_SHORT).show();
+                    Log.d(TAG, "BroadcastReceiver: BOND_BONDED.");
+                    discoverableView.setText("Device is Connected");
+                }
+                //case2: creating a bone
+                if (mDevice.getBondState() == BluetoothDevice.BOND_BONDING) {
+                    Toast.makeText(BluetoothActivity.this, "Pairing ",
+                            Toast.LENGTH_LONG).show();
+                    Log.d(TAG, "BroadcastReceiver: BOND_BONDING.");
+                }
+                //case3: breaking a bond
+                if (mDevice.getBondState() == BluetoothDevice.BOND_NONE) {
+                    Toast.makeText(BluetoothActivity.this, "Pairing failed ",
+                            Toast.LENGTH_SHORT).show();
+                    Log.d(TAG, "BroadcastReceiver: BOND_NONE.");
+                }
+            }
+        }
+    };
 
     public void enableDisableBT(){
         if(mBluetoothAdapter == null){
@@ -172,7 +220,22 @@ public class BluetoothActivity extends AppCompatActivity {
 
     }
 
-    public void enableDisableDiscoverability(View view) {
+    public void verifyBluetoothState(){
+        if(mBluetoothAdapter == null){
+            bluetoothView.setText("Does not have BT capabilities.");
+            discoverableView.setText("Does not have BT capabilities.");
+        }
+        if(!mBluetoothAdapter.isEnabled()){
+            bluetoothView.setText("Bluetooth is OFF");
+            discoverableView.setText("Device is invisible");
+        }
+        if(mBluetoothAdapter.isEnabled()){
+            bluetoothView.setText("Bluetooth is ON");
+            discoverableView.setText("Device is Connectable");
+        }
+    }
+
+    public void enableDisableDiscoverability() {
         Log.d(TAG, "enableDisableDiscoverability: Making device discoverable for 300 seconds.");
 
         Intent discoverableIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_DISCOVERABLE);
@@ -227,7 +290,31 @@ public class BluetoothActivity extends AppCompatActivity {
         super.onDestroy();
         unregisterReceiver(mBroadcastReceiver1);
         unregisterReceiver(mBroadcastReceiver2);
+        unregisterReceiver(mBroadcastReceiver3);
+        unregisterReceiver(mBroadcastReceiver4);
     }
 
+
+    @Override
+    public void onItemClick(AdapterView<?> adapterView, View view, int i, long l) {
+        //first cancel discovery because its very memory intensive.
+        mBluetoothAdapter.cancelDiscovery();
+
+        Log.d(TAG, "onItemClick: You Clicked on a device.");
+        String deviceName = mBTDevices.get(i).getName();
+        String deviceAddress = mBTDevices.get(i).getAddress();
+
+        Log.d(TAG, "onItemClick: deviceName = " + deviceName);
+        Log.d(TAG, "onItemClick: deviceAddress = " + deviceAddress);
+
+        //create the bond.
+        //NOTE: Requires API 17+? I think this is JellyBean
+        if(Build.VERSION.SDK_INT > Build.VERSION_CODES.JELLY_BEAN_MR2){
+            Toast.makeText(this, "Trying to pair with " + deviceName,
+                    Toast.LENGTH_SHORT).show();
+            Log.d(TAG, "Trying to pair with " + deviceName);
+            mBTDevices.get(i).createBond();
+        }
+    }
 
 }
