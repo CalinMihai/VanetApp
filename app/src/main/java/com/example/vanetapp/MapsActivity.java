@@ -363,6 +363,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
                 //constantly getting  the user locations from the database to verify their speed,
                 //and the distance between them
                 verifyDistance();
+
                 mHandler.postDelayed(mRunnable, LOCATION_UPDATE_INTERVAL);
             }
         }, LOCATION_UPDATE_INTERVAL);
@@ -433,6 +434,14 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
             }else{
                 startService(serviceIntent);
             }
+        }
+    }
+
+    private void stopLocationService(){
+        if(isLocationServiceRunning()){
+            Intent serviceIntent = new Intent(this, LocationService.class);
+            stopService(serviceIntent);
+            Log.d(TAG, "stopLocationService: Tried to stop location service");
         }
     }
 
@@ -707,6 +716,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
     public void onStop() {
         super.onStop();
         mMapView.onStop();
+
     }
 
 
@@ -714,12 +724,16 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
     public void onPause() {
         mMapView.onPause();
         super.onPause();
+
+        stopLocationService();
     }
 
     @Override
     public void onDestroy() {
         mMapView.onDestroy();
         super.onDestroy();
+
+        stopLocationService();
 
         if(mUserListEventListener != null){
             mUserListEventListener.remove();

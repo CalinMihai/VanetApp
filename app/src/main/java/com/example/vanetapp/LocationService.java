@@ -44,6 +44,7 @@ public class LocationService extends Service {
     public int kmhSpeed;
     private double dSpeed;
     private double acceleration;
+    private LocationCallback mLocationCallback;
 
     private static final String TAG = "LocationService";
 
@@ -86,6 +87,13 @@ public class LocationService extends Service {
         return START_NOT_STICKY;
     }
 
+    @Override
+    public void onDestroy() {
+        super.onDestroy();
+        stopSelf();
+        mFusedLocationClient.removeLocationUpdates(mLocationCallback);
+    }
+
     private void getLocation() {
 
         // ---------------------------------- LocationRequest ------------------------------------
@@ -104,10 +112,11 @@ public class LocationService extends Service {
             return;
         }
         Log.d(TAG, "getLocation: getting location information.");
-        mFusedLocationClient.requestLocationUpdates(mLocationRequestHighAccuracy, new LocationCallback() {
+
+        mFusedLocationClient.requestLocationUpdates(mLocationRequestHighAccuracy, mLocationCallback = new LocationCallback(){
+
                     @Override
                     public void onLocationResult(LocationResult locationResult) {
-
                         Log.d(TAG, "onLocationResult: got location result.");
 
                         Location location = locationResult.getLastLocation();
@@ -159,8 +168,5 @@ public class LocationService extends Service {
         }
 
     }
-
-
-
 
 }
