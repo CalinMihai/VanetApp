@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
     package="com.example.vanetapp">
     <!--
          The ACCESS_COARSE/FINE_LOCATION permissions are not required to use
@@ -20,6 +21,9 @@
         android:name="android.permission.BLUETOOTH_ADMIN" />
     <uses-permission
         android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <uses-permission
+        android:name="android.permission.BLUETOOTH_PRIVILEGED"
+        tools:ignore="ProtectedPermissions" />
 
     <uses-feature
         android:name="android.hardware.bluetooth" />
@@ -35,7 +39,7 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.VanetApp">
-        <activity android:name=".BluetoothActivity"></activity>
+        <activity android:name=".BluetoothActivity"/>
 
         <meta-data
             android:name="com.google.android.geo.API_KEY"

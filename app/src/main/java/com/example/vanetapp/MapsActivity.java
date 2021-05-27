@@ -362,7 +362,10 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
                 retrieveUserLocations();
                 //constantly getting  the user locations from the database to verify their speed,
                 //and the distance between them
-                verifyDistance();
+                if(isLocationServiceRunning()){
+                    verifyDistance();
+                }
+
 
                 mHandler.postDelayed(mRunnable, LOCATION_UPDATE_INTERVAL);
             }
@@ -599,11 +602,13 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
                             mUserLocations = new ArrayList<>();
 
                             for (QueryDocumentSnapshot doc : queryDocumentSnapshots) {
-                                UserLocation userLocation = doc.toObject(UserLocation.class);
-                                mUserLocations.add(userLocation);
+                                if(doc != null){
+                                    UserLocation userLocation = doc.toObject(UserLocation.class);
+                                    mUserLocations.add(userLocation);
 
-                                if(userLocation.getUser().getUser_id().equals(FirebaseAuth.getInstance().getUid())){
-                                    mUserPosition = userLocation;
+                                    if(userLocation.getUser().getUser_id().equals(FirebaseAuth.getInstance().getUid())){
+                                        mUserPosition = userLocation;
+                                    }
                                 }
 
                             }
