@@ -18,6 +18,7 @@ import android.location.LocationManager;
 import android.os.Bundle;
 import android.os.Handler;
 import android.util.Log;
+import android.view.View;
 import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -60,10 +61,12 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
     private static final String TAG = "MapsActivity";
     private static final int LOCATION_UPDATE_INTERVAL = 3000;
     private Button profile_button;
+    private Button traffic_button;
     double distanceToUser;
     boolean isDangerAlertDisplayed;
     boolean isRunnableRunning;
     boolean addedMapMarkers;
+    boolean traffic;
 
     private FirebaseFirestore firebaseFirestore;
     private MapView mMapView;
@@ -93,6 +96,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
 
         speedView = findViewById(R.id.speedView);
         mMapView = (MapView) findViewById(R.id.map);
+
         mFusedLocationClient = LocationServices.getFusedLocationProviderClient(this);
         firebaseFirestore = FirebaseFirestore.getInstance();
         initGoogleMap(savedInstanceState);
@@ -100,9 +104,25 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
         isDangerAlertDisplayed = false;
         isRunnableRunning = false;
         addedMapMarkers = false;
+        traffic = false;
 
         profile_button  = findViewById(R.id.profileBtn);
         profile_button.setOnClickListener(view -> openProfileActivity());
+
+        traffic_button  = findViewById(R.id.trafficBtn);
+        traffic_button.setOnClickListener(view -> {
+            if(traffic){
+                mMap.setTrafficEnabled(false);
+                Log.d(TAG, "onCreate: traffic is off");
+                traffic = false;
+            }else{
+                mMap.setTrafficEnabled(true);
+                Log.d(TAG, "onCreate: traffic is on");
+                traffic = true;
+            }
+        });
+
+
 
     }
 
@@ -672,6 +692,10 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
             return;
         }
         mMap.setMyLocationEnabled(true);
+       /* if(!traffic){
+            mMap.setTrafficEnabled(true);
+        }*/
+
 
     }
 
