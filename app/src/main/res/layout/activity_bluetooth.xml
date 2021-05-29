@@ -13,6 +13,7 @@
         android:layout_marginStart="20dp"
         android:layout_marginTop="20dp"
         android:text="ON/OFF"
+        android:textSize="12sp"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
 
@@ -20,9 +21,9 @@
         android:id="@+id/bluetoothView"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginStart="10dp"
-        android:layout_marginTop="20dp"
-        android:text="Bluetooth is -"
+        android:layout_marginStart="20dp"
+        android:layout_marginTop="30dp"
+        android:text="BT is -"
         android:textSize="14sp"
         app:layout_constraintStart_toEndOf="@+id/onOffBtn"
         app:layout_constraintTop_toTopOf="parent" />
@@ -33,7 +34,8 @@
         android:layout_height="wrap_content"
         android:layout_marginStart="20dp"
         android:layout_marginTop="10dp"
-        android:text="Make Device Discoverable"
+        android:text="Visibility"
+        android:textSize="10sp"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/onOffBtn" />
 
@@ -41,14 +43,12 @@
         android:id="@+id/discoverableView"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginStart="10dp"
-        android:layout_marginTop="20dp"
-        android:layout_marginEnd="20dp"
+        android:layout_marginStart="20dp"
+        android:layout_marginTop="40dp"
         android:text="Invisible"
         android:textSize="14sp"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toEndOf="@+id/bluetoothView"
-        app:layout_constraintTop_toTopOf="parent" />
+        app:layout_constraintStart_toEndOf="@+id/discoverableBtn"
+        app:layout_constraintTop_toBottomOf="@+id/bluetoothView" />
 
     <ListView
         android:id="@+id/newDevicesListView"
@@ -68,27 +68,32 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginStart="20dp"
-        android:layout_marginTop="10dp"
-        android:text="Discover Devices"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/discoverableBtn" />
+        android:layout_marginEnd="20dp"
+        android:layout_marginBottom="10dp"
+        android:text="Discover"
+        android:textSize="10sp"
+        app:layout_constraintBottom_toTopOf="@+id/newDevicesListView"
+        app:layout_constraintEnd_toStartOf="@+id/startConnectionBtn"
+        app:layout_constraintHorizontal_bias="0.794"
+        app:layout_constraintStart_toEndOf="@+id/devicesTextView" />
 
     <Button
         android:id="@+id/startConnectionBtn"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginStart="20dp"
-        android:layout_marginTop="10dp"
-        android:text="Start Connection"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/discoverBtn" />
+        android:layout_marginEnd="20dp"
+        android:layout_marginBottom="10dp"
+        android:text="Connect"
+        android:textSize="10sp"
+        app:layout_constraintBottom_toTopOf="@+id/newDevicesListView"
+        app:layout_constraintEnd_toEndOf="parent" />
 
     <Button
         android:id="@+id/sendBtn"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginStart="20dp"
-        android:layout_marginTop="30dp"
+        android:layout_marginTop="20dp"
         android:layout_marginEnd="20dp"
         android:text="Send"
         app:layout_constraintEnd_toEndOf="parent"
@@ -100,10 +105,10 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginStart="20dp"
-        android:layout_marginTop="30dp"
+        android:layout_marginTop="20dp"
         android:ems="10"
         android:inputType="textPersonName"
-        android:text="Type here"
+        android:text="Type Warning Here"
         android:textSize="20sp"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/newDevicesListView" />
@@ -113,19 +118,53 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginStart="20dp"
-        android:layout_marginTop="15dp"
+        android:layout_marginTop="100dp"
         android:text="Available Devices :"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/startConnectionBtn" />
+        app:layout_constraintTop_toBottomOf="@+id/discoverableBtn" />
 
     <TextView
         android:id="@+id/outputTextView"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginTop="30dp"
-        android:text="No incoming messages"
+        android:layout_marginTop="20dp"
+        android:text="No Incoming Information"
         android:textSize="20sp"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/editText" />
+
+    <TextView
+        android:id="@+id/speedBtTextView"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="10dp"
+        android:layout_marginTop="10dp"
+        android:layout_marginEnd="10dp"
+        android:text="My speed  -"
+        android:textSize="24sp"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/outputTextView" />
+
+    <Button
+        android:id="@+id/autoConnectBtn"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="20dp"
+        android:layout_marginEnd="20dp"
+        android:text="Auto Connect"
+        android:textSize="10sp"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <TextView
+        android:id="@+id/autoConnectTextView"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="20dp"
+        android:layout_marginEnd="20dp"
+        android:text="Auto Connect is -"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/autoConnectBtn" />
 </androidx.constraintlayout.widget.ConstraintLayout>

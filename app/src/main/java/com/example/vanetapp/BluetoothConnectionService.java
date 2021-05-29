@@ -36,6 +36,11 @@ public class BluetoothConnectionService {
     private UUID deviceUUID;
     ProgressDialog mProgressDialog;
 
+    boolean isDevicePaired;
+    boolean isDeviceConnected;
+    boolean connectionAttempt;
+    boolean nowSend;
+
     private ConnectedThread mConnectedThread;
 
     public BluetoothConnectionService(Context context) {
@@ -72,15 +77,25 @@ public class BluetoothConnectionService {
 
         public void run(){
             Log.d(TAG, "run: AcceptThread Running.");
-
             BluetoothSocket socket = null;
+
+
 
             try{
                 // This is a blocking call and will only return on a
                 // successful connection or an exception
                 Log.d(TAG, "run: RFCOM server socket start.....");
 
+                isDevicePaired = true;
+                //sending the input message in another activity
+                Intent devicePairedIntent = new Intent("isDevicePaired");
+                devicePairedIntent.putExtra("isDevicePaired", isDevicePaired);
+                LocalBroadcastManager.getInstance(mContext).sendBroadcast(devicePairedIntent);
+
                 socket = mmServerSocket.accept();
+
+
+
 
                 Log.d(TAG, "run: RFCOM server socket accepted connection.");
 
@@ -94,6 +109,21 @@ public class BluetoothConnectionService {
             }
 
             Log.i(TAG, "END mAcceptThread ");
+
+            connectionAttempt = false;
+            //sending the input message in another activity
+            Intent connectionAttemptIntent = new Intent("connectionAttempt");
+            connectionAttemptIntent.putExtra("connectionAttempt", connectionAttempt);
+            LocalBroadcastManager.getInstance(mContext).sendBroadcast(connectionAttemptIntent);
+
+
+            isDeviceConnected = true;
+            //sending the input message in another activity
+            Intent deviceConnectedIntent = new Intent("isDeviceConnected");
+            deviceConnectedIntent.putExtra("isDeviceConnected", isDeviceConnected);
+            LocalBroadcastManager.getInstance(mContext).sendBroadcast(deviceConnectedIntent);
+
+
         }
 
         public void cancel() {
@@ -122,8 +152,16 @@ public class BluetoothConnectionService {
         }
 
         public void run(){
+
             BluetoothSocket tmp = null;
             Log.i(TAG, "RUN mConnectThread ");
+
+
+            connectionAttempt = true;
+            //sending the input message in another activity
+            Intent connectionAttemptIntent = new Intent("connectionAttempt");
+            connectionAttemptIntent.putExtra("connectionAttempt", connectionAttempt);
+            LocalBroadcastManager.getInstance(mContext).sendBroadcast(connectionAttemptIntent);
 
             // Get a BluetoothSocket for a connection with the
             // given BluetoothDevice
@@ -147,6 +185,12 @@ public class BluetoothConnectionService {
                 // successful connection or an exception
                 mmSocket.connect();
 
+                //sending the input message in another activity
+                nowSend = true;
+                Intent nowSendIntent = new Intent("nowSend");
+                nowSendIntent.putExtra("nowSend", nowSend);
+                LocalBroadcastManager.getInstance(mContext).sendBroadcast(nowSendIntent);
+
                 Log.d(TAG, "run: ConnectThread connected.");
             } catch (IOException e) {
                 // Close the socket
@@ -167,7 +211,7 @@ public class BluetoothConnectionService {
                 Log.d(TAG, "cancel: Closing Client Socket.");
                 mmSocket.close();
             } catch (IOException e) {
-                Log.e(TAG, "cancel: close() of mmSocket in Connectthread failed. " + e.getMessage());
+                Log.e(TAG, "cancel: close() of mmSocket in Connect thread failed. " + e.getMessage());
             }
         }
     }
@@ -199,6 +243,7 @@ public class BluetoothConnectionService {
 
     public void startClient(BluetoothDevice device,UUID uuid){
         Log.d(TAG, "startClient: Started.");
+
 
         //init progress dialog
         mProgressDialog = ProgressDialog.show(mContext,"Connecting Bluetooth"
