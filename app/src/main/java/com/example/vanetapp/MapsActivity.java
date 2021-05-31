@@ -584,12 +584,13 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
     //end of the permission check
 
     //message to be showed when a dangerous situation might occur
-    private void buildAlertMessageDanger() {
+    private void buildAlertMessageDanger1( UserLocation userLocation) {
         //boolean so that only one pop-up appears at a time
         isDangerAlertDisplayed = true;
 
         final AlertDialog.Builder builder = new AlertDialog.Builder(this);
-        builder.setMessage("Attention! Danger ahead.")
+        builder.setMessage("Attention!!!\n\n " + userLocation.getUser().getUsername() +
+                 " is approaching with " + userLocation.getSpeed() + " km/h")
                 .setCancelable(false)
                 .setNeutralButton("OK", (dialogInterface, i) -> {
                     dialogInterface.dismiss();
@@ -599,6 +600,21 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
         alert.show();
     }
 
+    private void buildAlertMessageDanger2( UserLocation userLocation) {
+        //boolean so that only one pop-up appears at a time
+        isDangerAlertDisplayed = true;
+
+        final AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setMessage("Attention!!!\n\n " + userLocation.getUser().getUsername() +
+                " is nearby and your speed is over 80 km/h")
+                .setCancelable(false)
+                .setNeutralButton("OK", (dialogInterface, i) -> {
+                    dialogInterface.dismiss();
+                    isDangerAlertDisplayed = false;
+                });
+        final AlertDialog alert = builder.create();
+        alert.show();
+    }
     private void verifyDistance() {
 
         //getting the user location from the database before every verification for accurate readings
@@ -650,10 +666,15 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
                 Log.d(TAG, "My speed is: " + mUserPosition.getSpeed() +
                         " and his speed is :" + userLocation.getSpeed());*/
 
-                if((userLocation.getSpeed() >= 80 || mUserPosition.getSpeed() >= 80) && distanceToUser <= 0.1){
+                if(userLocation.getSpeed() >= 80  && distanceToUser <= 0.1){
                     if(isDangerAlertDisplayed != true){
-                        buildAlertMessageDanger();
-                        Log.d(TAG, "Danger!!");
+                        buildAlertMessageDanger1(userLocation);
+                        Log.d(TAG, "Danger1!!");
+                    }
+                }else if(mUserPosition.getSpeed() >= 80  && distanceToUser <= 0.1){
+                    if(isDangerAlertDisplayed != true){
+                        buildAlertMessageDanger2(userLocation);
+                        Log.d(TAG, "Danger2!!");
                     }
                 }
 

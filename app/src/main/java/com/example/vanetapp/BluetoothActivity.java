@@ -1,6 +1,7 @@
 package com.example.vanetapp;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.RequiresApi;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
@@ -17,6 +18,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.pm.PackageManager;
+import android.graphics.Color;
 import android.location.Location;
 import android.location.LocationManager;
 import android.os.Build;
@@ -101,7 +103,6 @@ public class BluetoothActivity extends AppCompatActivity implements AdapterView.
     public ArrayList<BluetoothDevice> mBTDevices = new ArrayList<>();
     ListView newDevicesListView;
 
-    @SuppressLint("WrongViewCast")
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -162,7 +163,7 @@ public class BluetoothActivity extends AppCompatActivity implements AdapterView.
 
 
         verifyBluetoothState();
-        autoTextView.setText("Auto Connect is OFF");
+        autoTextView.setText("Auto is OFF");
 
         onOffBtn.setOnClickListener(view -> {
             Log.d(TAG, "onClick: enabling/disabling bluetooth.");
@@ -197,11 +198,11 @@ public class BluetoothActivity extends AppCompatActivity implements AdapterView.
             if(autoConnect){
                 Log.d(TAG, "onClick: Switching OFF the auto connect ");
                 autoConnect = false;
-                autoTextView.setText(" Auto Connect is OFF");
+                autoTextView.setText(" Auto is OFF");
             }else{
                 Log.d(TAG, "onClick: Switching ON the auto connect ");
                 autoConnect = true;
-                autoTextView.setText(" Auto Connect is ON");
+                autoTextView.setText(" Auto is ON");
             }
         });
 

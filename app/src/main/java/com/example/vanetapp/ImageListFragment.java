@@ -56,9 +56,17 @@ public class ImageListFragment extends Fragment
     private void getImageResources(){
         mImageResources.add(R.drawable.scorpion);
         mImageResources.add(R.drawable.raiden);
-        mImageResources.add(R.drawable.default_avatar);
         mImageResources.add(R.drawable.spawn);
-        mImageResources.add(R.drawable.erron_black);
+        mImageResources.add(R.drawable.kabal);
+        mImageResources.add(R.drawable.kitana);
+        mImageResources.add(R.drawable.joker);
+        mImageResources.add(R.drawable.liu);
+        mImageResources.add(R.drawable.jax);
+        mImageResources.add(R.drawable.shang);
+        mImageResources.add(R.drawable.cassie);
+        mImageResources.add(R.drawable.fujin);
+        mImageResources.add(R.drawable.erron);
+        mImageResources.add(R.drawable.default_avatar);
     }
 
     private void initRecyclerview(){
