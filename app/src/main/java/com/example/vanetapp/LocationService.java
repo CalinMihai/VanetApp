@@ -10,6 +10,7 @@ import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.graphics.Color;
 import android.location.Location;
 
 import android.os.Build;
@@ -130,6 +131,11 @@ public class LocationService extends Service {
                                 acceleration = 3.6 * (dSpeed);
                                 kmhSpeed = (int) (Math.round(3.6 * (location.getSpeed())));
                                 speedView.setText("\nYour speed is " + kmhSpeed + " km/h");
+                                if(kmhSpeed > 80){
+                                    speedView.setTextColor(Color.RED);
+                                }else{
+                                    speedView.setTextColor(Color.WHITE);
+                                }
                             }else{
                                 kmhSpeed = 0;
                             }

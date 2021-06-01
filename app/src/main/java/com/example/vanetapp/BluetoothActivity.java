@@ -58,6 +58,8 @@ public class BluetoothActivity extends AppCompatActivity implements AdapterView.
     TextView speedBtTextView;
     EditText messageEditText;
     TextView autoTextView;
+    TextView speedTextView1;
+    TextView speedTextView2;
     StringBuilder messages;
     double speed;
 
@@ -123,6 +125,8 @@ public class BluetoothActivity extends AppCompatActivity implements AdapterView.
         speedBtTextView = findViewById(R.id.speedBtTextView);
         messageEditText = findViewById(R.id.editText);
         autoTextView = findViewById(R.id.autoConnectTextView);
+        speedTextView1 = findViewById(R.id.speedTextView1);
+        speedTextView2 = findViewById(R.id.speedTextView2);
 
         isRunnableRunning = false;
         isBluetoothOn = false;
@@ -229,9 +233,20 @@ public class BluetoothActivity extends AppCompatActivity implements AdapterView.
         public void onReceive(Context context, Intent intent) {
             String text = intent.getStringExtra("theMessage");
             messages.setLength(0);
-            messages.append(text + "\n");
+            messages.append(text);
 
-            inputTextView.setText(messages);
+            if(text.endsWith("km/h")){
+                if(Double.parseDouble(text.substring(0, (messages.length() - 5))) > 80.0){
+                    speedTextView2.setTextColor(Color.RED);
+                }else{
+                    speedTextView2.setTextColor(Color.GREEN);
+                }
+                speedTextView2.setText(messages);
+            }else{
+                inputTextView.setText(messages);
+                inputTextView.setTextColor(Color.RED);
+            }
+
         }
     };
 
@@ -566,7 +581,7 @@ public class BluetoothActivity extends AppCompatActivity implements AdapterView.
     }
 
     public void sendingTheSpeed(){
-        String speedString = String.valueOf(speed);
+        String speedString = String.valueOf(speed) + " km/h";
         byte[] bytes = speedString.getBytes(Charset.defaultCharset());
         bluetoothConnectionService.write(bytes);
     }
@@ -584,6 +599,11 @@ public class BluetoothActivity extends AppCompatActivity implements AdapterView.
 
                 speed = (int) (Math.round(3.6 * (location.getSpeed())));
                 speedBtTextView.setText("My speed: " + speed + " km/h");
+                if(speed > 80){
+                    speedBtTextView.setTextColor(Color.RED);
+                }else{
+                    speedBtTextView.setTextColor(Color.WHITE);
+                }
 
             }
         });
